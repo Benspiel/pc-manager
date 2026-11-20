@@ -7,6 +7,20 @@ Es gibt zwei Teile:
 
 Einen eigenen Backend-Server gibt es nicht.
 
+## Schnellstart für Schüler-PCs (ein Skript)
+
+Nur Python muss installiert sein (`winget install -e --id Python.Python.3.12`). Dann [setup.py](setup.py) herunterladen und ausführen:
+
+```powershell
+python setup.py
+```
+
+Das Skript lädt das Projekt von GitHub nach `C:\ProgramData\PC-Manager`, installiert `pystray` und `pillow`, legt eine `config.json` an (`pc_id` leer, also gilt der Hostname), richtet den Autostart ein und startet das Programm. Für den Autostart fragt es per UAC nach Administratorrechten. Erneutes Ausführen aktualisiert die Dateien, eine vorhandene `config.json` bleibt erhalten.
+
+Optionen: `--dir ORDNER`, `--pc-id NAME`, `--no-autostart` (dann kein Admin nötig), `--no-start`.
+
+Die Schritte unten beschreiben die manuelle Einrichtung und das Lehrer-Panel.
+
 ## 1. Python und Git installieren
 
 ```powershell
