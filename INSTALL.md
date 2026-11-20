@@ -27,7 +27,7 @@ Ebenfalls mit einem Befehl, in der normalen Eingabeaufforderung (`cmd`) oder in 
 python setup.py --panel
 ```
 
-Das lädt die Dateien nach `%LOCALAPPDATA%\PC-Manager-Panel`, startet den Webserver ohne Fenster und richtet den Autostart ein (kein Administrator nötig). Das Panel ist danach unter `http://localhost:8080/teacher-panel.html` erreichbar. Mit `--network` ist es auch im Netz erreichbar, `--port 9000` ändert den Port. In Appwrite muss unter Plattformen `localhost` (bzw. der Hostname/die IP bei `--network`) als Web-Plattform eingetragen sein.
+Das lädt die Dateien nach `%LOCALAPPDATA%\PC-Manager-Panel`, startet den Webserver ohne Fenster und richtet den Autostart ein (kein Administrator nötig). Das Panel ist danach unter `http://localhost:8080/teacher-panel.html` erreichbar. Der Server aktualisiert sich selbst: Er holt beim Start und danach alle 30 Minuten die neueste Version von GitHub (nach einem Neuladen der Seite ist sie aktiv, ändert sich `serve_panel.pyw` selbst, startet er sich neu). Abschalten mit `"auto_update": false` in der `config.json` im Panel-Ordner. Mit `--network` ist es auch im Netz erreichbar, `--port 9000` ändert den Port. In Appwrite muss unter Plattformen `localhost` (bzw. der Hostname/die IP bei `--network`) als Web-Plattform eingetragen sein.
 
 Wichtig: Die PowerShell-Befehle weiter unten funktionieren nur in **PowerShell**, nicht in der klassischen Eingabeaufforderung (`cmd`). Mit `setup.py` brauchst du sie nicht.
 
