@@ -56,7 +56,9 @@ def urlopen_compat(req, timeout=20):
     try:
         return urllib.request.urlopen(req, timeout=timeout)
     except urllib.error.URLError as e:
-        if not isinstance(getattr(e, "reason", None), ssl.SSLError):
+        # Zertifikatsfehler ODER "Verbindung verweigert" (WinError 10061, z. B. ein
+        # lokaler Proxy aus den Windows-Einstellungen, den urllib nutzt, curl.exe aber nicht)
+        if not isinstance(getattr(e, "reason", None), (ssl.SSLError, ConnectionRefusedError)):
             raise
         ssl_error = e
     for extra in ([], ["--ssl-no-revoke"]):  # 2. Versuch: ohne Sperrlistenpruefung (Proxys blocken die oft)
