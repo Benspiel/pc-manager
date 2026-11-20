@@ -15,7 +15,7 @@ Nur Python muss installiert sein (`winget install -e --id Python.Python.3.12`). 
 python setup.py
 ```
 
-Das Skript lädt das Projekt von GitHub nach `C:\ProgramData\PC-Manager`, installiert `pystray` und `pillow`, legt eine `config.json` an (`pc_id` leer, also gilt der Hostname), richtet den Autostart ein und startet das Programm. Für den Autostart fragt es per UAC nach Administratorrechten. Erneutes Ausführen aktualisiert die Dateien, eine vorhandene `config.json` bleibt erhalten.
+Das Skript lädt das Projekt von GitHub nach `C:\ProgramData\PC-Manager`, installiert `pystray` und `pillow`, legt eine `config.json` an (`pc_id` leer, also gilt der Hostname), richtet den Autostart ein und startet das Programm. Für den Autostart fragt es per UAC nach Administratorrechten. Danach aktualisiert sich das Programm selbst: `launcher.py` prüft beim Start und alle 30 Minuten auf einen neuen Commit im GitHub-Repo (kein API-Key nötig, das Repo ist öffentlich) und startet mit der neuen Version neu. `setup.py` muss pro PC nur einmal laufen. Details und Abschalten (`auto_update`) stehen in der [README](README.md).
 
 Optionen: `--dir ORDNER`, `--pc-id NAME`, `--no-autostart` (dann kein Admin nötig), `--no-start`.
 

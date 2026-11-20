@@ -33,6 +33,15 @@ Der Eintrag heißt `PC-Manager` und ist ganz normal sichtbar unter
 **Windows-Einstellungen → Apps → Autostart** bzw. im Task-Manager unter dem
 Tab „Autostart". Startet mit `pythonw.exe`, also ohne Konsolenfenster.
 
+## Auto-Update
+`launcher.py` startet `pc_manager.py` und holt sich selbst die neueste Version aus dem öffentlichen GitHub-Repo – ohne API-Key. Der Autostart (`--install-autostart`) startet automatisch den Launcher, falls `launcher.py` vorhanden ist.
+
+- Beim Start wird auf einen neueren Commit geprüft, danach alle `update_check_minutes` (Standard 30). Bei einem neuen Commit wird die Version geladen, geprüft (muss kompilieren) und `pc_manager.py` automatisch neu gestartet.
+- `config.json` wird nie überschrieben. Die installierte Version steht in `.version`, Meldungen in `launcher.log`.
+- Beendet sich `pc_manager.py` (Tray → Beenden oder Absturz), beendet sich auch der Launcher – kein automatischer Neustart. Beim nächsten Anmelden wird zuerst aktualisiert.
+- Abschalten: `"auto_update": false` in `config.json`.
+- **Sicherheit:** Wer in das GitHub-Repo pushen darf, führt damit Code auf allen PCs aus (erhöht). Das GitHub-Konto mit 2FA absichern.
+
 ## Modi (`mode` in config.json)
 - `windows` (Standard): echte Windows-Sperre wie Win+L. Entsperrt wird mit PIN/Passwort. Bleibt der Status `locked`, sperrt das Programm alle `relock_seconds` (Standard 30, `0` = nur einmal) erneut.
 - `overlay`: Vollbild-Fenster mit `lock.png`, keine echte Sperre (per Strg+Alt+Entf / Task-Manager umgehbar).

@@ -659,7 +659,10 @@ def install_autostart():
     einzurichten. Danach startet die Aufgabe bei jeder Anmeldung erhoeht,
     OHNE weitere UAC-Abfrage."""
     target = pythonw_path()
-    command = f'"{target}" "{SCRIPT_FILE}"'
+    # Mit launcher.py (Auto-Update) starten, falls vorhanden.
+    launcher = BASE / "launcher.py"
+    script = launcher if launcher.exists() else SCRIPT_FILE
+    command = f'"{target}" "{script}"'
     args = [
         "schtasks", "/create", "/tn", AUTOSTART_TASK_NAME,
         "/tr", command,

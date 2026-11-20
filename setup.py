@@ -1,6 +1,7 @@
 """PC-Manager Setup: laedt das Projekt von GitHub, legt es in einen festen Ordner,
 installiert die Abhaengigkeiten, richtet den Autostart ein und startet das
-Programm. Nur Python noetig, sonst nichts (nur Standardbibliothek).
+Programm. Danach aktualisiert sich das Programm selbst von GitHub (launcher.py).
+Nur Python noetig, sonst nichts (nur Standardbibliothek).
 
 Aufruf (Doppelklick oder):
     python setup.py
@@ -53,11 +54,11 @@ def relaunch_as_admin():
 
 
 def stop_running_instances():
-    """Beendet eine bereits laufende pc_manager.py, damit nach einem Update nicht
-    zwei Instanzen laufen."""
+    """Beendet einen bereits laufenden Starter/pc_manager.py, damit nach einem
+    Update nicht zwei Instanzen laufen."""
     ps = (
         "Get-CimInstance Win32_Process | "
-        "Where-Object { $_.CommandLine -match 'pc_manager\\.py' -and $_.ProcessId -ne $PID } | "
+        "Where-Object { $_.CommandLine -match '(pc_manager|launcher)\\.py' -and $_.ProcessId -ne $PID } | "
         "ForEach-Object { Stop-Process -Id $_.ProcessId -Force }"
     )
     subprocess.run(["powershell", "-NoProfile", "-Command", ps], capture_output=True)
@@ -130,7 +131,7 @@ def setup_autostart(target):
 
 def start_program(target):
     flags = 0x00000008 | 0x00000200 | 0x08000000  # DETACHED_PROCESS | NEW_PROCESS_GROUP | NO_WINDOW
-    subprocess.Popen([pythonw(), str(target / "pc_manager.py")], cwd=target, creationflags=flags,
+    subprocess.Popen([pythonw(), str(target / "launcher.py")], cwd=target, creationflags=flags,
                      stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     print("PC-Manager gestartet (Tray-Icon unten rechts).")
 

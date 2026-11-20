@@ -11,5 +11,7 @@
   "mode": "windows",
   "relock_seconds": 0,
   "lock_image": "lock.png",
-  "allow_escape": false
+  "allow_escape": false,
+  "auto_update": true,
+  "update_check_minutes": 30
 }
