@@ -302,6 +302,9 @@
   .pc-status.locked::before { background: var(--accent-orange); }
   .pc-status.unlocked { background: var(--ok-bg); color: var(--ok-fg); }
   .pc-status.unlocked::before { background: var(--accent-green); }
+  .pc-status.offline { background: var(--canvas-soft); color: var(--ink-muted); }
+  .pc-status.offline::before { background: var(--ink-faint); }
+  .pc-tile.offline .pc-name { color: var(--ink-muted); }
 
   /* ex-empty-state-card */
   .empty-state {
@@ -671,9 +674,29 @@ async function afterLogin() {
   if (!refreshTimer) refreshTimer = setInterval(loadPcs, 5000);
 }
 
+// Online-Erkennung OHNE Vergleich mit der Uhr dieses Rechners (die kann falsch gehen
+// und wuerde sonst alle PCs verstecken): ein PC ist online, solange sich sein
+// last_seen in den letzten ONLINE_THRESHOLD_MS bei UNS geaendert hat. Nur beim ersten
+// Sehen eines PCs wird einmalig die Uhr herangezogen.
+const lastSeenTrack = {}; // pcId -> { ls: letzter last_seen-Wert, at: lokale Zeit der letzten Aenderung }
+
+function trackLastSeen(pcs) {
+  const now = Date.now();
+  for (const pc of pcs) {
+    const t = lastSeenTrack[pc.$id];
+    if (t && t.ls === pc.last_seen) continue;
+    let at = now;
+    if (!t) { // erstes Mal gesehen: nur online, wenn der Zeitstempel nach der Uhr frisch ist
+      const age = pc.last_seen ? now - new Date(pc.last_seen).getTime() : Infinity;
+      at = age < ONLINE_THRESHOLD_MS ? now : 0;
+    }
+    lastSeenTrack[pc.$id] = { ls: pc.last_seen, at };
+  }
+}
+
 function isOnline(pc) {
-  if (!pc.last_seen) return false;
-  return (Date.now() - new Date(pc.last_seen).getTime()) < ONLINE_THRESHOLD_MS;
+  const t = lastSeenTrack[pc.$id];
+  return !!(pc.last_seen && t && (Date.now() - t.at) < ONLINE_THRESHOLD_MS);
 }
 
 async function loadPcs() {
@@ -681,9 +704,9 @@ async function loadPcs() {
   try {
     const res = await databases.listDocuments(DATABASE_ID, TABLE_ID);
     allPcs = res.documents;
-    const online = allPcs.filter(isOnline);
-    renderStats(online);
-    renderRooms(online);
+    trackLastSeen(allPcs);
+    renderStats(allPcs);
+    renderRooms(allPcs);
     if (currentPc) refreshDetail();
   } catch (e) {
     showError("Konnte PC-Liste nicht laden: " + (e.message || e));
@@ -695,7 +718,7 @@ function renderStats(rows) {
   const lockedCount = rows.filter(r => r.status === "locked").length;
   const roomCount = new Set(rows.map(r => r.room || "Ohne Raum")).size;
   const stats = [
-    { value: rows.length, label: "PCs online", tone: "green" },
+    { value: rows.filter(isOnline).length + " / " + rows.length, label: "PCs online", tone: "green" },
     { value: lockedCount, label: "Gesperrt", tone: "orange" },
     { value: roomCount, label: "Räume", tone: "purple" },
   ];
@@ -727,16 +750,17 @@ function renderRooms(rows) {
   if (rows.length === 0) {
     container.innerHTML = `<div class="empty-state">
       <div class="empty-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg></div>
-      <strong>Keine PCs online</strong>
-      PCs ohne laufendes pc_manager.py werden hier nicht angezeigt.
+      <strong>Noch keine PCs registriert</strong>
+      Ein PC erscheint hier, sobald pc_manager.py darauf zum ersten Mal läuft.
     </div>`;
   }
 }
 
 function renderPcTile(pc) {
   const locked = pc.status === "locked";
+  const online = isOnline(pc);
   const tile = document.createElement("div");
-  tile.className = "pc-tile";
+  tile.className = "pc-tile" + (online ? "" : " offline");
   tile.tabIndex = 0;
   tile.onclick = () => openDetail(pc);
   tile.onkeydown = (e) => {
@@ -746,7 +770,7 @@ function renderPcTile(pc) {
   const top = document.createElement("div");
   top.className = "pc-head";
   top.innerHTML = `<div class="pc-name">${escapeHtml(pc.pc_name || pc.$id)}</div>
-                    <div class="pc-status ${locked ? "locked" : "unlocked"}">${locked ? "Gesperrt" : "Entsperrt"}</div>`;
+                    <div class="pc-status ${online ? (locked ? "locked" : "unlocked") : "offline"}">${online ? (locked ? "Gesperrt" : "Entsperrt") : "Offline · " + (locked ? "gesperrt" : "entsperrt")}</div>`;
 
   const actions = document.createElement("div");
   actions.className = "actions";
