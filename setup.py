@@ -12,6 +12,14 @@ Optionen:
     --no-autostart    keinen Autostart einrichten (dann auch kein Admin noetig)
     --no-start        Programm nach der Installation nicht starten
 
+Lehrer-PC (Webserver fuer das Panel statt Schueler-Programm):
+    python setup.py --panel [--port 8080] [--network]
+    Laedt die Dateien nach %LOCALAPPDATA%\\PC-Manager-Panel, startet den
+    Panel-Webserver ohne Fenster und richtet dafuer einen Autostart ein
+    (Verknuepfung im Autostart-Ordner, kein Admin noetig). Das Panel ist dann
+    unter http://localhost:8080/teacher-panel.html erreichbar. --network macht
+    es auch im Netz erreichbar (0.0.0.0).
+
 Der Autostart ist eine geplante Aufgabe mit erhoehten Rechten und braucht
 Administratorrechte. Das Skript fragt dafuer selbst per UAC nach.
 Erneutes Ausfuehren aktualisiert die Dateien; eine vorhandene config.json
@@ -53,12 +61,13 @@ def relaunch_as_admin():
     sys.exit(0)
 
 
-def stop_running_instances():
-    """Beendet einen bereits laufenden Starter/pc_manager.py, damit nach einem
-    Update nicht zwei Instanzen laufen."""
+def stop_running_instances(names=("pc_manager", "launcher")):
+    """Beendet einen bereits laufenden Starter/pc_manager.py (bzw. den Panel-Server),
+    damit nach einem Update nicht zwei Instanzen laufen."""
+    pattern = "(" + "|".join(names) + ")\\.(py|pyw)"
     ps = (
         "Get-CimInstance Win32_Process | "
-        "Where-Object { $_.CommandLine -match '(pc_manager|launcher)\\.py' -and $_.ProcessId -ne $PID } | "
+        f"Where-Object {{ $_.CommandLine -match '{pattern}' -and $_.ProcessId -ne $PID }} | "
         "ForEach-Object { Stop-Process -Id $_.ProcessId -Force }"
     )
     subprocess.run(["powershell", "-NoProfile", "-Command", ps], capture_output=True)
@@ -136,17 +145,68 @@ def start_program(target):
     print("PC-Manager gestartet (Tray-Icon unten rechts).")
 
 
+PANEL_DIR = Path(os.environ.get("LOCALAPPDATA", str(Path.home()))) / "PC-Manager-Panel"
+PANEL_LINK = (Path(os.environ.get("APPDATA", str(Path.home())))
+              / "Microsoft" / "Windows" / "Start Menu" / "Programs" / "Startup" / "PC-Manager-Panel.lnk")
+
+
+def create_panel_shortcut(target, port, bind):
+    """Verknuepfung im Autostart-Ordner (startet den Panel-Server ohne Fenster)."""
+    ps = (
+        "$s=(New-Object -ComObject WScript.Shell).CreateShortcut($env:PCM_LNK);"
+        "$s.TargetPath=$env:PCM_EXE;$s.Arguments=$env:PCM_ARGS;"
+        "$s.WorkingDirectory=$env:PCM_DIR;$s.WindowStyle=7;$s.Save()"
+    )
+    env = dict(os.environ,
+               PCM_LNK=str(PANEL_LINK), PCM_EXE=pythonw(), PCM_DIR=str(target),
+               PCM_ARGS=subprocess.list2cmdline([str(target / "serve_panel.pyw"), str(port), bind]))
+    PANEL_LINK.parent.mkdir(parents=True, exist_ok=True)
+    result = subprocess.run(["powershell", "-NoProfile", "-Command", ps], env=env,
+                            capture_output=True, text=True)
+    if result.returncode != 0:
+        print("Autostart-Verknuepfung konnte nicht angelegt werden:\n" + (result.stderr or "").strip())
+    else:
+        print(f"Autostart eingerichtet: {PANEL_LINK}")
+
+
+def setup_panel(args):
+    target = Path(args.dir).expanduser().resolve() if args.dir else PANEL_DIR
+    bind = "0.0.0.0" if args.network else "127.0.0.1"
+    stop_running_instances(("serve_panel",))
+    download_and_copy(target)
+    if not args.no_autostart:
+        create_panel_shortcut(target, args.port, bind)
+    if not args.no_start:
+        flags = 0x00000008 | 0x00000200 | 0x08000000  # DETACHED_PROCESS | NEW_PROCESS_GROUP | NO_WINDOW
+        subprocess.Popen([pythonw(), str(target / "serve_panel.pyw"), str(args.port), bind],
+                         cwd=target, creationflags=flags,
+                         stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        print(f"Panel-Server gestartet: http://localhost:{args.port}/teacher-panel.html")
+    if args.network:
+        print(f"Im Netz: Port {args.port} in der Windows-Firewall erlauben und in Appwrite "
+              "unter Plattformen den Hostnamen/die IP dieses PCs eintragen.")
+    else:
+        print("Appwrite: unter Plattformen muss 'localhost' als Web-Plattform eingetragen sein.")
+    print("\nFertig.")
+
+
 def main():
     if sys.platform != "win32":
         sys.exit("Dieses Setup funktioniert nur unter Windows.")
     ap = argparse.ArgumentParser(description="PC-Manager Setup")
-    ap.add_argument("--dir", default=str(DEFAULT_DIR))
+    ap.add_argument("--dir", default=None)
+    ap.add_argument("--panel", action="store_true", help="Panel-Webserver statt Schueler-Programm")
+    ap.add_argument("--port", type=int, default=8080)
+    ap.add_argument("--network", action="store_true", help="Panel im Netz erreichbar (0.0.0.0)")
     ap.add_argument("--pc-id", default="")
     ap.add_argument("--no-autostart", action="store_true")
     ap.add_argument("--no-start", action="store_true")
     ap.add_argument("--elevated", action="store_true", help=argparse.SUPPRESS)
     args = ap.parse_args()
-    target = Path(args.dir).expanduser().resolve()
+    if args.panel:
+        setup_panel(args)
+        return
+    target = Path(args.dir or DEFAULT_DIR).expanduser().resolve()
 
     if not args.no_autostart and not is_admin():
         print("Fuer den Autostart sind Administratorrechte noetig - UAC-Abfrage folgt ...")

@@ -19,6 +19,18 @@ Das Skript lädt das Projekt von GitHub nach `C:\ProgramData\PC-Manager`, instal
 
 Optionen: `--dir ORDNER`, `--pc-id NAME`, `--no-autostart` (dann kein Admin nötig), `--no-start`.
 
+## Schnellstart für den Lehrer-PC (Panel-Webserver)
+
+Ebenfalls mit einem Befehl, in der normalen Eingabeaufforderung (`cmd`) oder in PowerShell:
+
+```
+python setup.py --panel
+```
+
+Das lädt die Dateien nach `%LOCALAPPDATA%\PC-Manager-Panel`, startet den Webserver ohne Fenster und richtet den Autostart ein (kein Administrator nötig). Das Panel ist danach unter `http://localhost:8080/teacher-panel.html` erreichbar. Mit `--network` ist es auch im Netz erreichbar, `--port 9000` ändert den Port. In Appwrite muss unter Plattformen `localhost` (bzw. der Hostname/die IP bei `--network`) als Web-Plattform eingetragen sein.
+
+Wichtig: Die PowerShell-Befehle weiter unten funktionieren nur in **PowerShell**, nicht in der klassischen Eingabeaufforderung (`cmd`). Mit `setup.py` brauchst du sie nicht.
+
 Die Schritte unten beschreiben die manuelle Einrichtung und das Lehrer-Panel.
 
 ## 1. Python und Git installieren
