@@ -1,0 +1,15 @@
+{
+  "endpoint": "https://DEINE-APPWRITE-INSTANZ/v1",
+  "project_id": "DEINE_PROJECT_ID",
+  "database_id": "main",
+  "collection_id": "pc",
+  "pc_id": "",
+  "api_key": "",
+  "status_field": "status",
+  "lock_value": "locked",
+  "poll_seconds": 5,
+  "mode": "windows",
+  "relock_seconds": 0,
+  "lock_image": "lock.png",
+  "allow_escape": false
+}

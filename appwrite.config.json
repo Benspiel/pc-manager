@@ -1,0 +1,124 @@
+{
+    "projectId": "6af62636001a129b6298",
+    "tablesDB": [
+        {
+            "$id": "main",
+            "name": "main",
+            "enabled": true
+        }
+    ],
+    "tables": [
+        {
+            "$id": "pc",
+            "$permissions": [
+                "read(\"any\")",
+                "update(\"team:lehrer\")"
+            ],
+            "databaseId": "main",
+            "name": "pc",
+            "enabled": true,
+            "rowSecurity": false,
+            "columns": [
+                {
+                    "key": "status",
+                    "type": "varchar",
+                    "required": true,
+                    "array": false,
+                    "size": 32,
+                    "default": null,
+                    "encrypt": false
+                },
+                {
+                    "key": "pc_name",
+                    "type": "varchar",
+                    "required": false,
+                    "array": false,
+                    "size": 64,
+                    "default": null,
+                    "encrypt": false
+                },
+                {
+                    "key": "room",
+                    "type": "varchar",
+                    "required": false,
+                    "array": false,
+                    "size": 64,
+                    "default": null,
+                    "encrypt": false
+                },
+                {
+                    "key": "last_seen",
+                    "type": "datetime",
+                    "required": false,
+                    "array": false,
+                    "default": null
+                },
+                {
+                    "key": "command",
+                    "type": "varchar",
+                    "required": false,
+                    "array": false,
+                    "size": 2000,
+                    "default": null,
+                    "encrypt": false
+                },
+                {
+                    "key": "command_result",
+                    "type": "varchar",
+                    "required": false,
+                    "array": false,
+                    "size": 2000,
+                    "default": null,
+                    "encrypt": false
+                },
+                {
+                    "key": "programs",
+                    "type": "varchar",
+                    "required": false,
+                    "array": false,
+                    "size": 16000,
+                    "default": null,
+                    "encrypt": false
+                },
+                {
+                    "key": "install_allowed",
+                    "type": "boolean",
+                    "required": false,
+                    "array": false,
+                    "default": true
+                },
+                {
+                    "key": "search_results",
+                    "type": "varchar",
+                    "required": false,
+                    "array": false,
+                    "size": 8000,
+                    "default": null,
+                    "encrypt": false
+                }
+            ],
+            "indexes": []
+        }
+    ],
+    "functions": [
+        {
+            "$id": "heartbeat",
+            "execute": [
+                "any"
+            ],
+            "name": "heartbeat",
+            "enabled": true,
+            "logging": true,
+            "runtime": "python-3.9",
+            "scopes": [
+                "documents.write"
+            ],
+            "events": [],
+            "schedule": "",
+            "timeout": 15,
+            "entrypoint": "src/main.py",
+            "commands": "",
+            "path": "functions/heartbeat"
+        }
+    ]
+}

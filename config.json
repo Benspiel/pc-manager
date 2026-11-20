@@ -1,0 +1,15 @@
+{
+  "endpoint": "https://appwrite.buchholz.dev/v1",
+  "project_id": "6af62636001a129b6298",
+  "database_id": "main",
+  "collection_id": "pc",
+  "pc_id": "INFO-PC01",
+  "api_key": "",
+  "status_field": "status",
+  "lock_value": "locked",
+  "poll_seconds": 5,
+  "mode": "overlay",
+  "relock_seconds": 0,
+  "lock_image": "lock.png",
+  "allow_escape": false
+}
