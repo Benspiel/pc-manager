@@ -41,37 +41,43 @@ und Port 8080 in der Windows-Firewall erlauben.
 
 ## 4. Webserver im Hintergrund laufen lassen
 
-Mit `python -m http.server` bleibt ein Konsolenfenster offen, und der Server endet, sobald es geschlossen wird. Mit `pythonw` läuft er ohne Fenster. Alle Befehle in diesem Abschnitt im Repo-Ordner ausführen, `--directory` legt fest, welcher Ordner ausgeliefert wird.
+Mit `python -m http.server` bleibt ein Konsolenfenster offen, und der Server endet, sobald es geschlossen wird. Außerdem funktioniert `pythonw -m http.server` **nicht**: Der Server lauscht zwar, beantwortet aber keine Anfragen, weil `pythonw` kein Fehlerausgabe-Fenster hat. Darum liegt im Repo das Skript `serve_panel.pyw`, das ohne Fenster läuft.
 
-**Einmal ohne Fenster starten** (läuft bis zum Abmelden oder Neustart):
+**Einmal ohne Fenster starten** (läuft bis zum Abmelden oder Neustart), im Repo-Ordner:
 
 ```powershell
-Start-Process pythonw -ArgumentList "-m http.server 8080 --directory `"$PWD`"" -WindowStyle Hidden
+Start-Process pythonw -ArgumentList "serve_panel.pyw" -WindowStyle Hidden
 ```
 
-**Automatisch bei jeder Anmeldung starten** (Verknüpfung im Autostart-Ordner, ohne Administratorrechte):
+Standard ist Port 8080, nur auf diesem PC erreichbar. Für den Zugriff aus dem Netz (Port 8080 in der Firewall freigeben):
+
+```powershell
+Start-Process pythonw -ArgumentList "serve_panel.pyw 8080 0.0.0.0" -WindowStyle Hidden
+```
+
+**Automatisch bei jeder Anmeldung starten** (Verknüpfung im Autostart-Ordner, ohne Administratorrechte), im Repo-Ordner:
 
 ```powershell
 $s = (New-Object -ComObject WScript.Shell).CreateShortcut("$env:APPDATA\Microsoft\Windows\Start Menu\Programs\Startup\PC-Manager-Panel.lnk")
 $s.TargetPath = (Get-Command pythonw).Source
-$s.Arguments = "-m http.server 8080 --directory `"$PWD`""
+$s.Arguments = "`"$PWD\serve_panel.pyw`""
 $s.WorkingDirectory = "$PWD"
 $s.WindowStyle = 7
 $s.Save()
 ```
 
-Der Server startet dann nach jeder Anmeldung des Benutzers automatisch und ohne sichtbares Fenster. Für den Zugriff aus dem Netz hängst du `--bind 0.0.0.0` an die Argumente an.
+Der Server startet dann nach jeder Anmeldung des Benutzers automatisch und ohne sichtbares Fenster. Für den Zugriff aus dem Netz hängst du in `Arguments` ` 8080 0.0.0.0` hinter den Skriptpfad.
 
-Prüfen, ob der Server läuft:
+Prüfen, ob der Server läuft (Antwort `200`):
 
 ```powershell
-curl.exe -I http://localhost:8080/teacher-panel.html
+curl.exe -s -o NUL -w "%{http_code}" http://localhost:8080/teacher-panel.html
 ```
 
 Beenden:
 
 ```powershell
-Get-CimInstance Win32_Process -Filter "Name='pythonw.exe'" | Where-Object CommandLine -match "http.server" | ForEach-Object { Stop-Process -Id $_.ProcessId }
+Get-CimInstance Win32_Process -Filter "Name='pythonw.exe'" | Where-Object CommandLine -match "serve_panel" | ForEach-Object { Stop-Process -Id $_.ProcessId }
 ```
 
 Autostart wieder entfernen:
