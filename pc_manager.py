@@ -39,6 +39,43 @@ SCRIPT_FILE = Path(__file__).resolve()
 AUTOSTART_TASK_NAME = "PC-Manager"
 
 
+def urlopen_compat(req, timeout=20):
+    """Wie urllib.request.urlopen. Schlaegt die Zertifikatspruefung von Python fehl
+    (z. B. fehlendes Stammzertifikat im Windows-Speicher oder TLS-Proxy), wird der
+    Aufruf mit curl.exe wiederholt, das den Windows-Zertifikatsspeicher nutzt
+    (Schannel, laedt fehlende Stammzertifikate nach). Die Zertifikatspruefung
+    bleibt dabei AKTIV, sie wird nicht abgeschaltet."""
+    import io
+    import ssl
+    if isinstance(req, str):
+        req = urllib.request.Request(req)
+    try:
+        return urllib.request.urlopen(req, timeout=timeout)
+    except urllib.error.URLError as e:
+        if not isinstance(getattr(e, "reason", None), ssl.SSLError):
+            raise
+        ssl_error = e
+    for extra in ([], ["--ssl-no-revoke"]):  # 2. Versuch: ohne Sperrlistenpruefung (Proxys blocken die oft)
+        cmd = ["curl.exe", "-sS", "-L", "--max-time", str(int(timeout)), *extra,
+               "-X", req.get_method(), "-w", "\n%{http_code}"]
+        for key, value in req.header_items():
+            cmd += ["-H", f"{key}: {value}"]
+        if req.data is not None:
+            cmd += ["--data-binary", "@-"]
+        cmd.append(req.full_url)
+        try:
+            r = subprocess.run(cmd, input=req.data, capture_output=True, creationflags=0x08000000)
+        except OSError:
+            raise ssl_error from None  # curl.exe nicht vorhanden
+        if r.returncode == 0:
+            body, _, code = r.stdout.rpartition(b"\n")
+            code = int(code or 0)
+            if code >= 400:
+                raise urllib.error.HTTPError(req.full_url, code, "HTTP-Fehler", {}, io.BytesIO(body))
+            return io.BytesIO(body)
+    raise ssl_error
+
+
 def load_config():
     with open(CONFIG_FILE, encoding="utf-8") as f:
         return json.load(f)
@@ -72,7 +109,7 @@ def fetch_document(cfg):
         headers["X-Appwrite-Key"] = cfg["api_key"]
     req = urllib.request.Request(url, headers=headers)
     try:
-        with urllib.request.urlopen(req, timeout=10) as resp:
+        with urlopen_compat(req, timeout=10) as resp:
             return json.load(resp)
     except urllib.error.HTTPError as e:
         if e.code == 404:
@@ -127,7 +164,7 @@ def report(cfg, pc_id, **fields):
     }
     req = urllib.request.Request(url, data=payload, headers=headers, method="POST")
     try:
-        with urllib.request.urlopen(req, timeout=20) as resp:
+        with urlopen_compat(req, timeout=20) as resp:
             result = json.load(resp)
         # Die Function-Antwort steckt im Feld "responseBody" der Execution.
         reply = json.loads(result.get("responseBody") or "{}")

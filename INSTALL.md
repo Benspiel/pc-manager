@@ -33,6 +33,16 @@ Wichtig: Die PowerShell-Befehle weiter unten funktionieren nur in **PowerShell**
 
 Die Schritte unten beschreiben die manuelle Einrichtung und das Lehrer-Panel.
 
+## Fehlerbehebung: Zertifikatsfehler beim Download
+
+Meldung `CERTIFICATE_VERIFY_FAILED ... unable to get local issuer certificate`: Python vertraut dem GitHub-Zertifikat nicht, meist weil dem PC ein Stammzertifikat fehlt (Windows nicht aktuell) oder das Netzwerk HTTPS umleitet. Die aktuellen Skripte (`setup.py`, `launcher.py`, `pc_manager.py`) wiederholen den Aufruf in diesem Fall automatisch mit `curl.exe`, das den Windows-Zertifikatsspeicher nutzt; die Zertifikatsprüfung bleibt dabei eingeschaltet. Hast du eine ältere `setup.py`, lade die aktuelle einmal so (geht in `cmd` und PowerShell):
+
+```
+curl.exe -L -o setup.py https://raw.githubusercontent.com/Benspiel/pc-manager/main/setup.py
+```
+
+Funktioniert auch das nicht, fehlt dem PC das Zertifikat grundsätzlich: Windows-Updates installieren oder die IT bitten, `github.com`, `codeload.github.com` und `raw.githubusercontent.com` freizugeben.
+
 ## 1. Python und Git installieren
 
 ```powershell

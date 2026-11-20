@@ -43,6 +43,43 @@ DEFAULT_DIR = Path(os.environ.get("ProgramData", r"C:\ProgramData")) / "PC-Manag
 REQUIREMENTS = ["pystray", "pillow"]
 
 
+def urlopen_compat(req, timeout=20):
+    """Wie urllib.request.urlopen. Schlaegt die Zertifikatspruefung von Python fehl
+    (z. B. fehlendes Stammzertifikat im Windows-Speicher oder TLS-Proxy), wird der
+    Aufruf mit curl.exe wiederholt, das den Windows-Zertifikatsspeicher nutzt
+    (Schannel, laedt fehlende Stammzertifikate nach). Die Zertifikatspruefung
+    bleibt dabei AKTIV, sie wird nicht abgeschaltet."""
+    import io
+    import ssl
+    if isinstance(req, str):
+        req = urllib.request.Request(req)
+    try:
+        return urllib.request.urlopen(req, timeout=timeout)
+    except urllib.error.URLError as e:
+        if not isinstance(getattr(e, "reason", None), ssl.SSLError):
+            raise
+        ssl_error = e
+    for extra in ([], ["--ssl-no-revoke"]):  # 2. Versuch: ohne Sperrlistenpruefung (Proxys blocken die oft)
+        cmd = ["curl.exe", "-sS", "-L", "--max-time", str(int(timeout)), *extra,
+               "-X", req.get_method(), "-w", "\n%{http_code}"]
+        for key, value in req.header_items():
+            cmd += ["-H", f"{key}: {value}"]
+        if req.data is not None:
+            cmd += ["--data-binary", "@-"]
+        cmd.append(req.full_url)
+        try:
+            r = subprocess.run(cmd, input=req.data, capture_output=True, creationflags=0x08000000)
+        except OSError:
+            raise ssl_error from None  # curl.exe nicht vorhanden
+        if r.returncode == 0:
+            body, _, code = r.stdout.rpartition(b"\n")
+            code = int(code or 0)
+            if code >= 400:
+                raise urllib.error.HTTPError(req.full_url, code, "HTTP-Fehler", {}, io.BytesIO(body))
+            return io.BytesIO(body)
+    raise ssl_error
+
+
 def is_admin():
     try:
         return bool(ctypes.windll.shell32.IsUserAnAdmin())
@@ -75,8 +112,16 @@ def stop_running_instances(names=("pc_manager", "launcher")):
 
 def download_and_copy(target):
     print(f"Lade {REPO_ZIP} ...")
-    with urllib.request.urlopen(REPO_ZIP, timeout=60) as resp:
-        data = resp.read()
+    try:
+        with urlopen_compat(REPO_ZIP, timeout=60) as resp:
+            data = resp.read()
+    except (urllib.error.URLError, OSError) as e:
+        sys.exit(
+            f"Download fehlgeschlagen: {e}\n"
+            "Pruefen: 'curl.exe -I https://github.com' in der Eingabeaufforderung. Kommt dort "
+            "ebenfalls ein Zertifikatsfehler, fehlt dem PC ein Stammzertifikat (Windows-Updates "
+            "installieren) oder das Netzwerk filtert HTTPS (IT fragen, github.com freigeben)."
+        )
     target.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory() as tmp:
         with zipfile.ZipFile(io.BytesIO(data)) as zf:
