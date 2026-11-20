@@ -124,7 +124,7 @@ pip install pystray pillow
 copy config.example.json config.json
 ```
 
-In `config.json` Endpoint und Projekt-ID eintragen. Die Zeile in Appwrite wird über `pc_id` bestimmt, ohne Eintrag wird der Hostname des Rechners verwendet.
+In `config.json` Endpoint und Projekt-ID eintragen. Die Zeile in Appwrite wird über `pc_id` bestimmt, ohne Eintrag wird der Hostname des Rechners verwendet. Gibt es die Zeile noch nicht, legt der PC sie beim ersten Verbinden selbst an (siehe [README](README.md), Abschnitt Selbstregistrierung).
 
 Testen, ohne sich auszusperren (Esc beendet):
 

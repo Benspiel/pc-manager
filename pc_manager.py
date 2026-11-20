@@ -22,6 +22,7 @@ import socket
 import subprocess
 import sys
 import threading
+import time
 import tkinter as tk
 import urllib.error
 import urllib.request
@@ -75,10 +76,36 @@ def fetch_document(cfg):
             return json.load(resp)
     except urllib.error.HTTPError as e:
         if e.code == 404:
-            # Haeufigste Ursache: IT hat noch keine Appwrite-Zeile mit dieser
-            # PC-ID angelegt, oder der Hostname stimmt nicht mit der Zeile ueberein.
-            raise urllib.error.URLError(f"Keine Appwrite-Zeile fuer PC-ID '{pc_id}' (404)") from e
+            # Noch keine Zeile fuer diesen PC: einmalig selbst anlegen lassen
+            # (ueber die heartbeat-Function) und direkt noch einmal lesen.
+            if try_register(cfg, pc_id):
+                return fetch_document(cfg)
+            raise urllib.error.URLError(
+                f"Keine Appwrite-Zeile fuer PC-ID '{pc_id}' (404), Selbstregistrierung nicht moeglich"
+            ) from e
         raise
+
+
+REGISTER_RETRY_SECONDS = 300
+_last_register_try = 0.0
+
+
+def try_register(cfg, pc_id):
+    """Laesst die heartbeat-Function die Zeile fuer diesen PC anlegen (status
+    'unlocked'). Hoechstens alle 5 Minuten, damit ein dauerhaft scheiternder
+    Versuch (z. B. Obergrenze erreicht) nicht alle paar Sekunden die Function
+    aufruft. Abschaltbar mit "auto_register": false. True = Zeile existiert jetzt."""
+    global _last_register_try
+    if cfg.get("auto_register", True) is False:
+        return False
+    now = time.monotonic()
+    if _last_register_try and now - _last_register_try < REGISTER_RETRY_SECONDS:
+        return False
+    _last_register_try = now
+    ok = report(cfg, pc_id, register=True, pc_name=socket.gethostname())
+    if ok:
+        _last_register_try = 0.0
+    return ok
 
 
 def report(cfg, pc_id, **fields):
@@ -100,10 +127,13 @@ def report(cfg, pc_id, **fields):
     }
     req = urllib.request.Request(url, data=payload, headers=headers, method="POST")
     try:
-        with urllib.request.urlopen(req, timeout=20):
-            pass
-    except (urllib.error.URLError, OSError):
-        pass
+        with urllib.request.urlopen(req, timeout=20) as resp:
+            result = json.load(resp)
+        # Die Function-Antwort steckt im Feld "responseBody" der Execution.
+        reply = json.loads(result.get("responseBody") or "{}")
+        return reply.get("ok") is True
+    except (urllib.error.URLError, OSError, ValueError):
+        return False
 
 
 # ---------------------------------------------------------------------------

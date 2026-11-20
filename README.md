@@ -33,6 +33,14 @@ Der Eintrag heißt `PC-Manager` und ist ganz normal sichtbar unter
 **Windows-Einstellungen → Apps → Autostart** bzw. im Task-Manager unter dem
 Tab „Autostart". Startet mit `pythonw.exe`, also ohne Konsolenfenster.
 
+## Selbstregistrierung
+Ein PC, zu dem es in Appwrite noch keine Zeile gibt, legt sie beim ersten Verbinden selbst an: Der Client ruft die `heartbeat`-Function mit `register: true` auf, und die Function erstellt die Zeile (`pc_id` = Hostname bzw. `pc_id` aus der `config.json`, `status` = `unlocked`, `pc_name` = Hostname, `last_seen`). Raum (`room`) trägst du danach im Panel ein. `provision_pcs.py` ist damit nur noch nötig, wenn du Räume/Namen vorab per CSV setzen willst.
+
+- Bestehende Zeilen werden dadurch nie verändert, der Sperrstatus kann so nicht umgangen werden.
+- Schutz vor Missbrauch (die Function darf jeder aufrufen): erlaubt sind nur IDs aus Buchstaben, Zahlen, `.`, `_`, `-` (max. 36 Zeichen), und es gibt eine Obergrenze von 500 Zeilen (Function-Variable `MAX_PCS`).
+- Der Client versucht es höchstens alle 5 Minuten. Abschalten mit `"auto_register": false` in der `config.json`.
+- Die geänderte Function muss einmalig neu deployt werden: `appwrite push functions` (Funktion `heartbeat`).
+
 ## Auto-Update
 `launcher.py` startet `pc_manager.py` und holt sich selbst die neueste Version aus dem öffentlichen GitHub-Repo – ohne API-Key. Der Autostart (`--install-autostart`) startet automatisch den Launcher, falls `launcher.py` vorhanden ist.
 
